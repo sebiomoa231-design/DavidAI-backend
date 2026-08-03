@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "davidai-backend"
+version = "0.0.0"
+description = "David AI backend - Render-ready packaging metadata"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+  { name = "sebiomoa231-design", email = "sebiomoa231@gmail.com" }
+]
+dependencies = []
