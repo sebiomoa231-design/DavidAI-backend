@@ -1,0 +1,20 @@
+DAVID AI GITHUB PACKS
+
+These packages are split to make manual upload easier from Android.
+
+UPLOAD ORDER:
+1. DavidAI_Package_00_RootFiles.zip
+2. DavidAI_Package_01_DavidCore.zip
+3. DavidAI_Package_02_Tests.zip
+4. DavidAI_Package_03_DataAndWorkspace.zip
+
+IMPORTANT:
+- GitHub does NOT automatically unpack ZIP files when you upload them.
+- For GitHub, you must EXTRACT each ZIP first.
+- After extracting, upload the extracted files/folders to the repository.
+
+Do NOT upload:
+- .env
+- __pycache__
+- .pytest_cache
+- logs/david.log
