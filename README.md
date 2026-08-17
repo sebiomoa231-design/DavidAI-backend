@@ -168,7 +168,7 @@ pytest -q
 python3 -m compileall -q .
 ```
 
-The current repository does not contain a versioned PostgreSQL/Supabase migration system; no undocumented production schema mutation was added. The deployment must therefore preserve the configured `DATA_DIR` if durable JSON persistence is required across restarts. Provider keys remain environment-backed and are never stored in memory or committed to Git.
+The current repository does not contain a versioned PostgreSQL/Supabase migration system; no undocumented production schema mutation was added. The deployment must therefore preserve the configured `DATA_DIR` if durable JSON persistence is required across restarts. Provider keys remain environment-backed and are never stored in memory or committed to Git. Render's native runtime is pinned by `.python-version` to Python 3.11.11, matching the tested environment and avoiding unsupported source builds for the pinned pydantic-core dependency.
 
 ## 11. Memory API examples
 
