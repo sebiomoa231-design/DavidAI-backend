@@ -149,3 +149,39 @@ Registration and login are restricted to the owner email.
 ## Capabilities
 
 See `/api/capabilities` for the capability registry and future-suite roadmap.
+
+
+## 10. Memory & Personal Knowledge system
+
+The production memory path is implemented in `david/memory/` and is integrated into the existing AI Core, authenticated memory API, project/task event hooks, and provider router. The active persistence backend remains the repository's existing atomic `JSONStore` under `DATA_DIR`; SQLAlchemy/Supabase is not silently substituted or claimed as active.
+
+A memory enters through `MemoryService`, where typed metadata is normalized, content is validated, secrets are rejected, provenance is retained, and the decision engine classifies the write as create, reinforce, review, conflict, or supersede. Retrieval is bounded and scoped by authenticated user, project, task, and conversation identifiers. Ranking combines lexical relevance, exact scope, importance, confidence, recency, and source authority. Embeddings are exposed through an injectable provider interface; when no provider is configured, the service reports `unavailable` and continues with deterministic lexical/metadata retrieval rather than fabricating vectors.
+
+Before model execution, `MemoryContextService` applies a relevance gate, selects only relevant records within a token budget, redacts sensitive content, and frames retrieved content as untrusted data so stored prompt-injection text cannot become instructions. AI Core passes the resulting message list to the existing provider router, so fallback providers receive the same assembled context. If memory retrieval fails, chat continues with `retrieval_available: false`; no false retrieval claim is returned. Successful meaningful conversations pass through the same privacy and write gate before durable write-back.
+
+The authenticated API is available under `/api/memories`. It supports creation, filtered and paginated listing, scoped search, context assembly, health, history, update/correction, archive, soft deletion, restoration, safe duplicate consolidation, and non-destructive maintenance scans. All item operations enforce the existing owner/workspace boundary. Use synthetic data only when smoke-testing these routes.
+
+The maintenance report identifies malformed records, stale active records, unresolved conflicts, and duplicate candidates without changing data automatically. Restoration and consolidation are explicit authenticated operations and generate audit events. Run the complete suite with:
+
+```bash
+pytest -q
+python3 -m compileall -q .
+```
+
+The current repository does not contain a versioned PostgreSQL/Supabase migration system; no undocumented production schema mutation was added. The deployment must therefore preserve the configured `DATA_DIR` if durable JSON persistence is required across restarts. Provider keys remain environment-backed and are never stored in memory or committed to Git.
+
+## 11. Memory API examples
+
+After authentication, use the bearer token returned by `/api/auth/login`:
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8000/api/memories?page=1&page_size=50&project_id=my-project"
+
+curl -X POST "http://localhost:8000/api/memories/context" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Continue the backend architecture project","project_id":"my-project"}'
+```
+
+Never place real credentials, access tokens, or private configuration in synthetic memory payloads, tests, documentation, or commits.

@@ -10,3 +10,4 @@ beautifulsoup4==4.12.3
 readability-lxml==0.8.1
 sqlalchemy==2.0.31
 aiofiles==23.2.1
+pytest-asyncio==0.23.7

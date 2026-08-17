@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>David AI Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0b0d12; color: #e7e9ee;
+  }
+  header {
+    padding: 20px 28px; border-bottom: 1px solid #1c2029;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { margin: 0; font-size: 18px; letter-spacing: 0.02em; }
+  header span { color: #7c8494; font-size: 13px; }
+  main { padding: 24px 28px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .card {
+    background: #12151c; border: 1px solid #1c2029; border-radius: 12px; padding: 18px;
+  }
+  .card h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #7c8494; }
+  .card .value { font-size: 28px; font-weight: 600; }
+  .providers { grid-column: 1 / -1; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #1c2029; }
+  th { color: #7c8494; font-weight: 500; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .online { background: #34d399; }
+  .offline { background: #f87171; }
+  #chat { grid-column: 1 / -1; }
+  #chat-log { min-height: 160px; max-height: 320px; overflow-y: auto; margin-bottom: 12px; }
+  #chat-log .msg { margin: 6px 0; padding: 8px 12px; border-radius: 8px; font-size: 14px; }
+  #chat-log .user { background: #1c2029; text-align: right; }
+  #chat-log .david { background: #16324f; }
+  #chat-form { display: flex; gap: 8px; }
+  #chat-input { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #2a3140; background: #0b0d12; color: #e7e9ee; }
+  button { padding: 10px 16px; border-radius: 8px; border: none; background: #3b82f6; color: white; cursor: pointer; font-weight: 600; }
+  button:hover { background: #2563eb; }
+</style>
+</head>
+<body>
+<header>
+  <h1>David AI</h1>
+  <span id="status-line">connecting...</span>
+</header>
+<main>
+  <div class="card"><h2>Memories</h2><div class="value" id="memory-count">--</div></div>
+  <div class="card"><h2>Projects</h2><div class="value" id="project-count">--</div></div>
+  <div class="card"><h2>Tasks</h2><div class="value" id="task-count">--</div></div>
+  <div class="card"><h2>Last Provider</h2><div class="value" id="last-provider" style="font-size:18px;">--</div></div>
+
+  <div class="card providers">
+    <h2>Provider Health</h2>
+    <table>
+      <thead><tr><th>Provider</th><th>Status</th><th>Latency</th><th>Failures</th></tr></thead>
+      <tbody id="providers-body"></tbody>
+    </table>
+  </div>
+
+  <div class="card" id="chat">
+    <h2>Chat with David</h2>
+    <div id="chat-log"></div>
+    <form id="chat-form">
+      <input id="chat-input" placeholder="Ask David anything..." autocomplete="off" />
+      <button type="submit">Send</button>
+    </form>
+  </div>
+</main>
+
+<script>
+async function refreshStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    document.getElementById('status-line').textContent = 'online';
+    document.getElementById('memory-count').textContent = data.memory_count;
+    document.getElementById('project-count').textContent = data.project_count;
+    document.getElementById('task-count').textContent = data.task_count;
+
+    const body = document.getElementById('providers-body');
+    body.innerHTML = '';
+    for (const [name, info] of Object.entries(data.providers)) {
+      const tr = document.createElement('tr');
+      const dotClass = info.online && info.has_key ? 'online' : 'offline';
+      tr.innerHTML = `<td>${name}</td>
+        <td><span class="dot ${dotClass}"></span>${info.has_key ? (info.online ? 'online' : 'error') : 'no key'}</td>
+        <td>${info.latency_ms ? info.latency_ms.toFixed(0) + 'ms' : '--'}</td>
+        <td>${info.failure_count}</td>`;
+      body.appendChild(tr);
+    }
+  } catch (e) {
+    document.getElementById('status-line').textContent = 'offline';
+  }
+}
+
+async function refreshMetrics() {
+  try {
+    const res = await fetch('/api/router/metrics');
+    const data = await res.json();
+    document.getElementById('last-provider').textContent = data.last_provider_used || '--';
+  } catch (e) {}
+}
+
+document.getElementById('chat-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+  const log = document.getElementById('chat-log');
+
+  log.innerHTML += `<div class="msg user">${message}</div>`;
+  input.value = '';
+  log.scrollTop = log.scrollHeight;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message })
+    });
+    const data = await res.json();
+    log.innerHTML += `<div class="msg david">${data.reply}</div>`;
+  } catch (err) {
+    log.innerHTML += `<div class="msg david">Error reaching David.</div>`;
+  }
+  log.scrollTop = log.scrollHeight;
+  refreshMetrics();
+});
+
+refreshStatus();
+refreshMetrics();
+setInterval(refreshStatus, 5000);
+</script>
+</body>
+</html>
