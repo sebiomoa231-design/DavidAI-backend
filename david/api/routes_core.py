@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from david.core.david import IDENTITY, handle_chat
+from david.config.settings import get_settings
 from david.core.owner import get_owner_profile
 from david.memory.memory_engine import memory_engine
 from david.memory.service import memory_service
@@ -18,7 +19,17 @@ router = APIRouter(tags=["core"])
 
 @router.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "david-ai-backend"}
+    embedding = memory_service.retriever.embeddings.health()
+    return {
+        "status": "ok",
+        "service": "david-ai-backend",
+        "version": get_settings().APP_VERSION,
+        "memory": {
+            "status": "ok",
+            "persistence": "json_store",
+            "embedding_status": embedding.get("status", "unknown"),
+        },
+    }
 
 
 @router.get("/api/status")
