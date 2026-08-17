@@ -34,6 +34,8 @@ async def handle_chat(
     conversation_id: Optional[str] = None,
     task_type: Optional[str] = None,
     manual_provider: Optional[str] = None,
+    required_capabilities: Optional[List[str]] = None,
+    provider_options: Optional[dict] = None,
     remember: bool = True,
     recent_context: Optional[List[str]] = None,
 ) -> dict:
@@ -63,7 +65,11 @@ async def handle_chat(
     ]
 
     response = await ai_router.chat(
-        messages=messages, task_type=task_type, manual_provider=manual_provider,
+        messages=messages,
+        task_type=task_type,
+        manual_provider=manual_provider,
+        required_capabilities=required_capabilities,
+        **(provider_options or {}),
     )
 
     writeback: List[dict] = []

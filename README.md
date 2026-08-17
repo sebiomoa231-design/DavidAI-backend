@@ -5,7 +5,8 @@
 This is the backend for David AI: a modular personal AI platform that stores
 memory, manages projects/tasks, enforces permissions, and routes chat
 requests across multiple AI providers (Gemini, Groq, Hugging Face,
-OpenRouter, Cerebras, SambaNova) with automatic fallback.
+OpenRouter, Cerebras, SambaNova, and Manus) with automatic fallback. Manus is
+David's official agentic execution provider for complex multi-step work.
 
 This build implements **v0.7 (Foundation)** and **v0.8 (AI Integration
 Layer)** in full, plus stable scaffolding/placeholders for v0.9–v1.4 so the
@@ -90,6 +91,10 @@ David/
 4. If that provider fails or has no key, the router automatically tries the
    next one in `PROVIDER_PRIORITY`, and the next, until one succeeds or all
    are exhausted (in which case it returns a graceful error — never a crash).
+   Requests requiring `agentic_execution`, `autonomous_execution`,
+   `multi_step_execution`, `coding_workflows`, `build_workflows`,
+   `project_file_operations`, or deep-research workflows are Manus-first when
+   capability matching is supplied; existing providers remain the fallback.
 5. The exchange is written back into memory.
 6. One unified reply is returned. The caller never knows which provider
    answered.
@@ -101,6 +106,24 @@ David/
 2. Register it in `AIRouter.__init__` in `david/router/ai_router.py`.
 3. Add its API key + model env vars to `.env.example` and `config/settings.py`.
 4. Add it to `PROVIDER_PRIORITY` in `.env` in whatever order you want it tried.
+
+### Manus agentic execution
+
+Set `MANUS_API_KEY` only in the local secret store or deployment environment.
+The backend sends the credential only as the `x-manus-api-key` request header and
+never logs or persists it. Manus tasks are created privately through the Manus
+API v2, polled with a bounded timeout, and returned through David's normal
+`ProviderResponse` contract. Waiting states are treated as safe provider
+failures; David never auto-confirms terminal, deployment, email, browser,
+calendar, or other side-effect actions from a normal chat request.
+
+Use `required_capabilities` on `POST /api/chat`, or `POST /api/tasks/{task_id}/execute`,
+to request Manus-first agentic execution. A manual `provider: "manus"` selection
+is also supported. If Manus is unavailable or fails under capability routing,
+the existing provider router automatically falls back to configured providers.
+
+Luma is intentionally absent from the provider registry and environment
+configuration. It must remain disabled until a valid `LUMA_API_KEY` is supplied.
 
 ## 7. Environment variables
 
@@ -114,7 +137,7 @@ in source, logged, or returned by any endpoint.
 | Memory / Projects / Tasks / Learning / Decisions | ✅ Fully built (v0.7) |
 | Auth (register/login/JWT) | ✅ Fully built (v0.7) |
 | Permissions engine | ✅ Fully built (v0.7) |
-| AI Router + 6 providers + fallback + metrics + cache | ✅ Fully built (v0.8) |
+| AI Router + 7 providers + fallback + metrics + cache | ✅ Fully built (v0.8 + Manus agentic execution) |
 | Uploads | ✅ Fully built (v0.7/v0.9 groundwork) |
 | Research (URL fetch + extraction) | ✅ Fetch works; `web_search` is a stub — plug in a search API key |
 | Plugins (calculator, notes) + plugin manager | ✅ Fully built, easy to extend |

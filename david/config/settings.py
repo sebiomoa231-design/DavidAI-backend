@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     CEREBRAS_API_KEY: str = ""
     SAMBANOVA_API_KEY: str = ""
+    MANUS_API_KEY: str = ""
 
     GEMINI_MODEL: str = "gemini-1.5-flash"
     GROQ_MODEL: str = "llama-3.1-70b-versatile"
@@ -52,10 +53,15 @@ class Settings(BaseSettings):
     OPENROUTER_MODEL: str = "openrouter/auto"
     CEREBRAS_MODEL: str = "llama3.1-70b"
     SAMBANOVA_MODEL: str = "Meta-Llama-3.1-70B-Instruct"
+    MANUS_MODEL: str = "manus-1.6"
+    MANUS_BASE_URL: str = "https://api.manus.ai/v2"
+    MANUS_TIMEOUT_SECONDS: float = 90.0
+    MANUS_POLL_INTERVAL_SECONDS: float = 1.5
+    MANUS_MAX_POLL_ATTEMPTS: int = 60
 
     # --- Router ---
     ROUTER_MODE: str = "auto"  # auto | manual | smart
-    PROVIDER_PRIORITY: str = "gemini,groq,cerebras,sambanova,openrouter,huggingface"
+    PROVIDER_PRIORITY: str = "gemini,groq,cerebras,sambanova,openrouter,huggingface,manus"
 
     # --- Database ---
     DATABASE_URL: str = "sqlite:///./data/david.db"

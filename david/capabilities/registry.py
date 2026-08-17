@@ -17,6 +17,7 @@ CAPABILITY_GROUPS = {
         "citations",
         "fact_checking",
         "report_generation",
+        "research_workflows",
     ],
     "reasoning": [
         "planning",
@@ -24,6 +25,9 @@ CAPABILITY_GROUPS = {
         "problem_solving",
         "self_evaluation",
         "retry_failed_tasks",
+        "agentic_execution",
+        "autonomous_execution",
+        "multi_step_execution",
     ],
     "development": [
         "code_generation",
@@ -33,6 +37,9 @@ CAPABILITY_GROUPS = {
         "website_builder",
         "app_builder",
         "deployment_assistance",
+        "coding_workflows",
+        "project_file_operations",
+        "build_workflows",
     ],
     "media": [
         "image_generation",

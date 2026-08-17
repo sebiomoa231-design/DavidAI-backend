@@ -68,3 +68,54 @@ def update_task_status(task_id: str, status: str) -> Optional[dict]:
         except ValueError:
             pass
     return updated
+
+
+DEFAULT_AGENTIC_CAPABILITIES = [
+    "agentic_execution",
+    "multi_step_execution",
+]
+
+
+async def execute_task(
+    task_id: str,
+    user_id: Optional[str] = None,
+    provider: Optional[str] = None,
+    required_capabilities: Optional[List[str]] = None,
+    provider_options: Optional[dict] = None,
+) -> dict:
+    """Execute a planned task through David's AI Core.
+
+    The import is intentionally local because AI Core already imports the task
+    module for status and context information. Manus is selected automatically
+    when agentic capabilities are required, while the router retains fallback
+    providers if Manus is unavailable or fails.
+    """
+    task = get_task(task_id)
+    if task is None:
+        raise ValueError("Task not found")
+    if user_id is not None and task.get("user_id") != user_id:
+        raise PermissionError("Task does not belong to the current workspace")
+
+    from david.core.david import handle_chat
+
+    update_task_status(task_id, "running")
+    prompt = task.get("title", "")
+    notes = task.get("notes", "")
+    if notes:
+        prompt += f"\n\nTask notes:\n{notes}"
+
+    options = dict(provider_options or {})
+    capabilities = required_capabilities or DEFAULT_AGENTIC_CAPABILITIES
+    response = await handle_chat(
+        message=prompt,
+        user_id=task.get("user_id"),
+        project_id=task.get("project_id"),
+        task_id=task_id,
+        task_type="agentic" if provider == "manus" or capabilities else "reasoning",
+        manual_provider=provider,
+        required_capabilities=capabilities,
+        provider_options=options,
+        remember=True,
+    )
+    update_task_status(task_id, "completed" if response.get("success") else "blocked")
+    return {"task": get_task(task_id), "execution": response}

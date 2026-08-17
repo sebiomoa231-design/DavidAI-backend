@@ -21,6 +21,15 @@ class TaskCreate(BaseModel):
     user_id: Optional[str] = None
 
 
+class TaskExecute(BaseModel):
+    provider: Optional[str] = None
+    required_capabilities: Optional[list[str]] = None
+    manus_task_id: Optional[str] = None
+    manus_agent_profile: Optional[str] = None
+    manus_interactive_mode: bool = False
+    manus_poll_interval: Optional[float] = None
+
+
 @router.get("")
 async def list_tasks(
     project_id: Optional[str] = None,
@@ -49,6 +58,33 @@ async def create_task(payload: TaskCreate, current_user: dict = Depends(get_curr
         due_date=payload.due_date,
         user_id=scoped_user_id,
     )
+
+
+@router.post("/{task_id}/execute")
+async def execute_task(task_id: str, payload: TaskExecute, current_user: dict = Depends(get_current_user)):
+    task = tasks_module.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    ensure_owner(task, current_user, resource_name="task")
+    try:
+        return await tasks_module.execute_task(
+            task_id=task_id,
+            user_id=scope_user_id(current_user, None),
+            provider=payload.provider,
+            required_capabilities=payload.required_capabilities,
+            provider_options={
+                key: value for key, value in {
+                    "manus_task_id": payload.manus_task_id,
+                    "manus_agent_profile": payload.manus_agent_profile,
+                    "manus_interactive_mode": payload.manus_interactive_mode,
+                    "manus_poll_interval": payload.manus_poll_interval,
+                }.items() if value is not None
+            },
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.post("/{task_id}/status/{status}")

@@ -15,6 +15,7 @@ from david.providers.huggingface import HuggingFaceProvider
 from david.providers.openrouter import OpenRouterProvider
 from david.providers.cerebras import CerebrasProvider
 from david.providers.sambanova import SambaNovaProvider
+from david.providers.manus import ManusProvider
 from david.router.cache import response_cache
 from david.router.metrics import router_metrics
 from david.utils.logger import get_logger
@@ -33,6 +34,14 @@ class AIRouter:
             "openrouter": OpenRouterProvider(settings.OPENROUTER_API_KEY, settings.OPENROUTER_MODEL),
             "cerebras": CerebrasProvider(settings.CEREBRAS_API_KEY, settings.CEREBRAS_MODEL),
             "sambanova": SambaNovaProvider(settings.SAMBANOVA_API_KEY, settings.SAMBANOVA_MODEL),
+            "manus": ManusProvider(
+                settings.MANUS_API_KEY,
+                settings.MANUS_MODEL,
+                base_url=settings.MANUS_BASE_URL,
+                timeout=settings.MANUS_TIMEOUT_SECONDS,
+                poll_interval=settings.MANUS_POLL_INTERVAL_SECONDS,
+                max_poll_attempts=settings.MANUS_MAX_POLL_ATTEMPTS,
+            ),
         }
         self.priority: List[str] = settings.provider_priority_list
         self.mode = settings.ROUTER_MODE  # auto | manual | smart
@@ -45,14 +54,36 @@ class AIRouter:
             "fast": ["groq", "cerebras", "sambanova"],
             "large_context": ["openrouter", "gemini"],
             "fallback": ["huggingface"],
+            "agentic": ["manus", "gemini", "openrouter"],
+            "autonomous_execution": ["manus", "gemini", "openrouter"],
+            "multi_step": ["manus", "gemini", "openrouter"],
+            "deep_research": ["manus", "gemini", "openrouter"],
+            "coding_workflow": ["manus", "openrouter", "gemini"],
+            "build_workflow": ["manus", "openrouter", "gemini"],
+            "project_file_operations": ["manus", "openrouter", "gemini"],
         }
 
-    def _candidate_order(self, task_type: Optional[str] = None, manual_provider: Optional[str] = None) -> List[str]:
+    def _candidate_order(
+        self,
+        task_type: Optional[str] = None,
+        manual_provider: Optional[str] = None,
+        required_capabilities: Optional[List[str]] = None,
+    ) -> List[str]:
         if manual_provider:
             return [manual_provider]
 
         if self.mode == "smart" and task_type and task_type in self.task_type_preference:
             preferred = self.task_type_preference[task_type]
+            remainder = [p for p in self.priority if p not in preferred]
+            return preferred + remainder
+
+        capability_set = {item.strip().lower() for item in (required_capabilities or []) if item.strip()}
+        if capability_set & {
+            "agentic_execution", "autonomous_execution", "multi_step_execution",
+            "coding_workflows", "build_workflows", "project_file_operations",
+            "research_workflows", "deep_research",
+        }:
+            preferred = ["manus"]
             remainder = [p for p in self.priority if p not in preferred]
             return preferred + remainder
 
@@ -72,6 +103,7 @@ class AIRouter:
                 "last_error": provider.health.last_error,
                 "failure_count": provider.health.failure_count,
                 "success_count": provider.health.success_count,
+                "capabilities": getattr(provider, "capabilities", []),
             }
         return snapshot
 
@@ -80,6 +112,7 @@ class AIRouter:
         messages: List[Dict[str, str]],
         task_type: Optional[str] = None,
         manual_provider: Optional[str] = None,
+        required_capabilities: Optional[List[str]] = None,
         use_cache: bool = True,
         **kwargs,
     ) -> ProviderResponse:
@@ -96,7 +129,11 @@ class AIRouter:
                     latency_ms=0.0, success=True,
                 )
 
-        order = self._candidate_order(task_type=task_type, manual_provider=manual_provider)
+        order = self._candidate_order(
+            task_type=task_type,
+            manual_provider=manual_provider,
+            required_capabilities=required_capabilities,
+        )
         attempted = []
 
         for provider_name in order:

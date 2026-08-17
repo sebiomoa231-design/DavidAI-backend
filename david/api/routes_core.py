@@ -29,6 +29,11 @@ async def health():
             "persistence": "json_store",
             "embedding_status": embedding.get("status", "unknown"),
         },
+        "agentic_provider": {
+            "name": "manus",
+            "configured": bool((await ai_router.health_snapshot()).get("manus", {}).get("has_key")),
+            "capabilities": getattr(ai_router.get_provider("manus"), "capabilities", []),
+        },
     }
 
 
@@ -61,6 +66,12 @@ class ChatRequest(BaseModel):
     conversation_id: Optional[str] = None
     task_type: Optional[str] = None
     provider: Optional[str] = None
+    required_capabilities: Optional[list[str]] = None
+    manus_task_id: Optional[str] = None
+    manus_agent_profile: Optional[str] = None
+    manus_interactive_mode: bool = False
+    manus_title: Optional[str] = None
+    manus_poll_interval: Optional[float] = Field(default=None, ge=0.1, le=10.0)
     remember: bool = True
     recent_context: Optional[list[str]] = None
 
@@ -74,5 +85,15 @@ async def chat(payload: ChatRequest, current_user: Optional[dict] = Depends(get_
         message=payload.message, user_id=scoped_user_id, project_id=payload.project_id,
         task_id=payload.task_id, conversation_id=payload.conversation_id,
         task_type=payload.task_type, manual_provider=payload.provider,
+        required_capabilities=payload.required_capabilities,
+        provider_options={
+            key: value for key, value in {
+                "manus_task_id": payload.manus_task_id,
+                "manus_agent_profile": payload.manus_agent_profile,
+                "manus_interactive_mode": payload.manus_interactive_mode,
+                "manus_title": payload.manus_title,
+                "manus_poll_interval": payload.manus_poll_interval,
+            }.items() if value is not None
+        },
         remember=payload.remember, recent_context=payload.recent_context,
     )
